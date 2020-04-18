@@ -93,3 +93,46 @@ ${COMMAND} >/dev/null 2>&1 &
 cat ${SYS_TRACE_FILE} | grep ${SYS_TRACE_START} > tmp && mv tmp ${SYS_TRACE_FILE                                                                                        }
 wait
 }
+
+call_trace(){
+export CALL_TRACE_FILE=./call_trace-${SCRIPT_START_TIME}.log
+strace -ttT -o ${CALL_TRACE_FILE} ${COMMAND} >/dev/null 2>&1
+}
+
+log_trace(){
+export STDOUT_FILE=./log_trace-${SCRIPT_START_TIME}.out
+export STDERR_FILE=./log_trace-${SCRIPT_START_TIME}.err
+${COMMAND} 2>>${STDERR_FILE} 1>>${STDOUT_FILE}
+}
+
+while [[ ${EXEC_COUNT} -lt ${COUNT} ]] && [[ ${EXEC_FAILED} -lt ${FAILED_COUNT} ]] ;do
+    export START_TIME=$(date +"%Y-%m-%d_%H:%M:%S")
+    ${COMMAND} > /dev/null 2>&1
+    export RESULT=$(echo "$?")
+    echo "${RESULT}" >> ./return_codes.txt
+
+    # If the command failed:
+    if [[ ${RESULT} != 0 ]] ; then
+            if [[ ${NET_TRACE} == "YES" ]]; then
+                    net_trace
+            fi
+            if [[ ${SYS_TRACE} == "YES" ]]; then
+                    sys_trace
+            fi
+            if [[ ${CALL_TRACE} == "YES" ]]; then
+                    call_trace &
+                    wait
+            fi
+            if [[ ${LOG_TRACE} == "YES" ]]; then
+                    log_trace &
+                    wait
+            fi
+
+            ((EXEC_FAILED++))
+    fi
+
+    ((EXEC_COUNT++))
+
+done
+
+fi
