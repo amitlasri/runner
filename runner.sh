@@ -82,8 +82,14 @@ while (( "$#" )); do
     esac
 done
 
-echo "count: ${COUNT}"
-echo "failed-count: ${FAILED_COUNT}"
-echo "sys-trace: ${SYS_TRACE}"
-echo "net-trace: ${NET_TRACE}"
-echo "call-trace: ${CALL_TRACE}"
+# For each failed execution, create a log for each of the following values, meas                                                                                        ured during command execution: Disk IO, Memory, Processes/threads and cpu usage                                                                                         of the command, Network card package counters.
+# Using sar command requires start and end time in format of %H:%M[:%S]. in this                                                                                         case i used %H:%M to increase the output.
+sys_trace() {
+export SYS_TRACE_FILE=./sys_trace_${START_TIME}.log
+#export SYS_TRACE_START=${START_TIME##*_}
+export SYS_TRACE_START=$(echo ${START_TIME##*_} | cut -c-5)
+sar 1 3 -n ALL -P ALL -r -u ALL >> ${SYS_TRACE_FILE} & >/dev/null 2>&1
+${COMMAND} >/dev/null 2>&1 &
+cat ${SYS_TRACE_FILE} | grep ${SYS_TRACE_START} > tmp && mv tmp ${SYS_TRACE_FILE                                                                                        }
+wait
+}
