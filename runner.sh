@@ -10,13 +10,13 @@ export EXEC_FAILED=0
 help(){
         cat <<EOF
   Usage: ${COMMAND} [-c COUNT] [--failed-count N] [--sys-trace] [--call-trace] [--log-trace] [--debug] [--help]
-   -c COUNT             Number of times to run the given command"
-   --failed-count N     Number of allowed failed command invocation attempts before giving up"
-   --sys-trace          For each failed execution, create a log for each of the following values: Disk IO, Memory, Processes/threads and cpu usage of the command, Network card package counters"
-   --call-trace         For each failed execution, also add a log with all the system calls ran by the command"
-   --log-trace          For each failed execution, add also the command output logs (stdout,stderr)"
-   --debug              Debug mode, show each instruction executed by the script"
-   --help               Print a usage message to STDERR explaining how the script should be used"
+   -c COUNT             Number of times to run the given command
+   --failed-count N     Number of allowed failed command invocation attempts before giving up
+   --sys-trace          For each failed execution, create a log for each of the following values: Disk IO, Memory, Processes/threads and cpu usage of the command, Network card package counters
+   --call-trace         For each failed execution, also add a log with all the system calls ran by the command
+   --log-trace          For each failed execution, add also the command output logs (stdout,stderr)
+   --debug              Debug mode, show each instruction executed by the script
+   --help               Print a usage message to STDERR explaining how the script should be used
 EOF
 exit
 }
