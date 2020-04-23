@@ -18,7 +18,7 @@ help(){
    --debug              Debug mode, show each instruction executed by the script
    --help               Print a usage message to STDERR explaining how the script should be used
 EOF
-exit
+exit 255
 }
 
 SHORT=c:
@@ -89,34 +89,38 @@ done
 # For each failed execution, create a log for each of the following values, measured during command execution: Disk IO, Memory, Processes/threads and cpu usage of the command, Network card package counters.
 # Using sar command requires start and end time in format of %H:%M[:%S]. in this case i used %H:%M to generate a more detailed output.
 sys_trace() {
-export SYS_TRACE_FILE=./sys_trace_${START_TIME}.log
-#export SYS_TRACE_START=${START_TIME##*_}
-export SYS_TRACE_START=$(echo ${START_TIME##*_} | cut -c-5)
-sar 1 3 -n ALL -P ALL -r -u ALL >> ${SYS_TRACE_FILE} & >/dev/null 2>&1
-${COMMAND} >/dev/null 2>&1 &
-cat ${SYS_TRACE_FILE} | grep ${SYS_TRACE_START} > tmp && mv tmp ${SYS_TRACE_FILE}
-wait
+SYS_TRACE_FILE=./sys_trace_${START_TIME}.log
+SYS_TRACE_START=$(echo ${START_TIME##*_} | cut -c-5)
+sar -n ALL -P ALL -r -u ALL -q -f /var/log/sa/sa$(date | awk '{print $3}') -s ${SYS_TRACE_START} >> ${SYS_TRACE_FILE}
 }
 
 # For each failed execution create a ‘pcap’ file with the network traffic during the execution.
 net_trace(){
-export NET_TRACE_PCAP=./net_trace_${START_TIME}.pcap
-tcpdump -U -i any -nnN -t -s 0 -c 20 -w ${NET_TRACE_PCAP} >/dev/null 2>&1 &
-${COMMAND} >/dev/null 2>&1 &
+NET_TRACE_PCAP=./net_trace_${START_TIME}.pcap
+tcpdump -U -i any -nnN -t -s 0 -c 3000 -w ${NET_TRACE_PCAP} >/dev/null 2>&1 &
 wait
 }
 
 # For each failed execution create log with all of the system calls ran by the command.
 call_trace(){
-export CALL_TRACE_FILE=./call_trace-${SCRIPT_START_TIME}.log
+CALL_TRACE_FILE=./call_trace-${SCRIPT_START_TIME}.log
 strace -ttT -o ${CALL_TRACE_FILE} ${COMMAND} >/dev/null 2>&1
 }
 
 # For each failed execution create stdout and stderr log files with the output of the command.
 log_trace(){
-export STDOUT_FILE=./log_trace-${SCRIPT_START_TIME}.out
-export STDERR_FILE=./log_trace-${SCRIPT_START_TIME}.err
-${COMMAND} 2>>${STDERR_FILE} 1>>${STDOUT_FILE}
+STDOUT_FILE=./log_trace-${START_TIME}.out
+STDERR_FILE=./log_trace-${START_TIME}.err
+${COMMAND} 2>>$STDERR_FILE 1>>$STDOUT_FILE
+}
+
+# Insert return code of the command to return_codes file.
+return_codes(){
+  STDOUT_FILE=./log_trace-${START_TIME}.out
+  STDERR_FILE=./log_trace-${START_TIME}.err
+  ${COMMAND} 2>>$STDERR_FILE 1>>$STDOUT_FILE
+  export RESULT=$?
+  echo "${RESULT}" >> ./return_codes.txt
 }
 
 # Print a summary of the command return codes.
@@ -146,9 +150,7 @@ trap summary SIGINT SIGQUIT SIGTSTP
 if [[ -z ${FAILED_COUNT} ]] ;then
         echo "no failed count option configured"
         while [[ ${EXEC_COUNT} -lt ${COUNT} ]] ;do
-                ${COMMAND} < /dev/null 2>&1
-                export RESULT=$(echo "$?")
-                echo "${RESULT}" >> ./return_codes.txt
+                return_codes
                 ((EXEC_COUNT++))
         done
 else
@@ -156,17 +158,14 @@ else
 # Running until getting to the limit of 'count' or 'failed-count' parameters.
 while [[ ${EXEC_COUNT} -lt ${COUNT} ]] && [[ ${EXEC_FAILED} -lt ${FAILED_COUNT} ]] ; do
     export START_TIME=$(date +"%Y-%m-%d_%H:%M:%S")
-    ${COMMAND} > /dev/null 2>&1
-    export RESULT=$(echo "$?")
-    echo "${RESULT}" >> ./return_codes.txt
-
+    return_codes
     # If the command failed:
     if [[ ${RESULT} != 0 ]] ; then
             if [[ ${NET_TRACE} == "YES" ]]; then
                     net_trace
             fi
             if [[ ${SYS_TRACE} == "YES" ]]; then
-                    sys_trace
+                sys_trace
             fi
             if [[ ${CALL_TRACE} == "YES" ]]; then
                     call_trace &
