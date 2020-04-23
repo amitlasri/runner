@@ -162,18 +162,18 @@ while [[ ${EXEC_COUNT} -lt ${COUNT} ]] && [[ ${EXEC_FAILED} -lt ${FAILED_COUNT} 
     # If the command failed:
     if [[ ${RESULT} != 0 ]] ; then
             if [[ ${NET_TRACE} == "YES" ]]; then
-                    net_trace
+                net_trace
             fi
             if [[ ${SYS_TRACE} == "YES" ]]; then
-                sys_trace
+                sys_trace &
+                wait
             fi
             if [[ ${CALL_TRACE} == "YES" ]]; then
-                    call_trace &
-                    wait
+                call_trace &
+                wait
             fi
             if [[ ${LOG_TRACE} == "YES" ]]; then
-                    log_trace &
-                    wait
+                log_trace
             fi
 
             ((EXEC_FAILED++))
