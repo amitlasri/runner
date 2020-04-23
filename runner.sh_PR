@@ -111,16 +111,16 @@ strace -ttT -o ${CALL_TRACE_FILE} ${COMMAND} >/dev/null 2>&1
 log_trace(){
 STDOUT_FILE=./log_trace-${START_TIME}.out
 STDERR_FILE=./log_trace-${START_TIME}.err
-${COMMAND} 2>>$STDERR_FILE 1>>$STDOUT_FILE
+mv $ERR $STDERR_FILE && mv $OUT $STDOUT_FILE
 }
 
 # Insert return code of the command to return_codes file.
 return_codes(){
-  STDOUT_FILE=./log_trace-${START_TIME}.out
-  STDERR_FILE=./log_trace-${START_TIME}.err
-  ${COMMAND} 2>>$STDERR_FILE 1>>$STDOUT_FILE
-  export RESULT=$?
-  echo "${RESULT}" >> ./return_codes.txt
+ERR=/tmp/err_file
+OUT=/tmp/out_file
+${COMMAND} 2>>$ERR 1>>$OUT
+export RESULT=$?
+echo "${RESULT}" >> ./return_codes.txt
 }
 
 # Print a summary of the command return codes.
@@ -178,13 +178,17 @@ while [[ ${EXEC_COUNT} -lt ${COUNT} ]] && [[ ${EXEC_FAILED} -lt ${FAILED_COUNT} 
 
             ((EXEC_FAILED++))
     fi
-
+    
     ((EXEC_COUNT++))
 
 done
 
 fi
 
+# Make sure that files of the command output will be removed. 
+if [[ -f $ERR ]] && [[ -f $OUT ]] ;then
+    rm -f $ERR $OUT
+fi
 
 ## End of the script - calling to the summary function
 summary
