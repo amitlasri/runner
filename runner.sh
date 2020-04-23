@@ -185,5 +185,6 @@ done
 
 fi
 
+
 ## End of the script - calling to the summary function
 summary
